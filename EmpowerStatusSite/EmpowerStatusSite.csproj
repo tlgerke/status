@@ -212,6 +212,7 @@
     <None Include="packages.config" />
     <Content Include="scripts\enable-serilog.ps1" />
     <Content Include="scripts\apply-serilog-replacements.ps1" />
+    <Content Include="scripts\README.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
