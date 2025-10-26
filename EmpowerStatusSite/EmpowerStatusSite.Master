@@ -1,0 +1,34 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="EmpowerStatusSite.master.cs" Inherits="EmpowerStatusSite.EmpowerStatusSite" %>
+
+<!DOCTYPE html>
+
+<html>
+<head runat="server">
+    <link href="StyleSheet1.css" rel="stylesheet" type="text/css" runat="server"/>
+    <title>Empower Status Site</title>
+    <asp:ContentPlaceHolder ID="head" runat="server">
+    
+</asp:ContentPlaceHolder>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <ul>
+            <li><a href="default.aspx">Home</a></li>
+            <li id="servicestatusItem" runat="server"><a href="ServiceStatus.aspx">Service Status</a></li>
+            <li id="schedTaskItem" runat="server"><a href="schedtask.aspx">Scheduled Task Info</a></li>
+            <li id="eventLogItem" runat="server"><a href="EventLogs.aspx">Event Logs</a></li>
+            <li style="float:right" id="serviceAdminItem" runat="server"><a href="ServiceStatusAdmin.aspx">Service Admin</a></li>
+            <li style="float:right" id="taskAdminItem" runat="server"><a href="SchedTaskAdmin.aspx">Task Admin</a></li>
+        </ul>
+        <br />
+
+        <div><asp:Label ID="UserID" runat="server" >Page.CurrentUser</asp:Label></div>
+        <br />
+        <div>
+            <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+                
+            </asp:ContentPlaceHolder>
+        </div>
+    </form>
+</body>
+</html>
