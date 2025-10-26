@@ -7,6 +7,10 @@ using System.Net;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using System.Configuration;
+using EmpowerStatusSite.Helpers;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace EmpowerStatusSite
 {
@@ -22,37 +26,47 @@ namespace EmpowerStatusSite
                 DropDownList1.Items.FindByText(hfSelectedValue.Value).Selected = true;
             }
 
-            BindServerData(DropDownList1.SelectedValue);
+            var _ = BindServerDataAsync(DropDownList1.SelectedValue);
             
         }
 
 
-        private void BindServerData(string env)
+        private async Task BindServerDataAsync(string env)
         {
             EnvName.Text = $"{env} Services";
             List<string> serverList = GetServerListFromDatabase(env);
 
             foreach (string server in serverList)
             {
-                string result = MakeWebServiceCall($"http://{server}:8081/api/servicestatus/get?serviceName=Empower");
-                ParseResults(result);
+                try
+                {
+                    string result = await HttpClientProvider.Instance.GetStringAsync($"http://{server}:8081/api/servicestatus/get?serviceName=Empower");
+                    ParseResults(result);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"Failed to fetch service status from {server}: {ex.Message}");
+                }
             }
             AddResultToTable();
         }
 
         private List<string> GetServerListFromDatabase(string env)
         {
-            List<string> serverList = new List< string>();
+            List<string> serverList = new List<string>();
 
-            string connectionString = "Data Source=wdmlesql01,31082;Initial Catalog=EMPOWER_DEV; User ID=EMPOWERDEV;Password=2=N%+Dn?8bWTHV~7q56jPkBJ";
+            string connectionString = ConfigurationManager.ConnectionStrings["EmpowerDb"]?.ConnectionString;
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                string query = $"SELECT Server FROM EmpowerStatus WHERE Type='app' AND env='{env}'";
+                string query = "SELECT Server FROM EmpowerStatus WHERE Type=@type AND env=@env";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
+                    cmd.Parameters.AddWithValue("@type", "app");
+                    cmd.Parameters.AddWithValue("@env", env);
+
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
@@ -76,7 +90,7 @@ namespace EmpowerStatusSite
         private void ParseResults(string result)
         {
             Dictionary<string, string> parsedValues = ParseResult(result);
-            foreach (var kvp in  parsedValues)
+            foreach (var kvp in parsedValues)
             {
                 try
                 {

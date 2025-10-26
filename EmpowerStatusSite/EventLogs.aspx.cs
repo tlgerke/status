@@ -7,6 +7,10 @@ using System.Web;
 using System.Web.Script.Serialization;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using EmpowerStatusSite.Helpers;
+using System.Threading.Tasks;
+using System.Configuration;
+using System.Diagnostics;
 
 namespace EmpowerStatusSite
 {
@@ -18,33 +22,38 @@ namespace EmpowerStatusSite
             
         }
 
-        private void BindServerData(string server, string log,string env)
+        private async Task BindServerDataAsync(string server, string log, string env)
         {
             EnvName.Text = $"{env} Logs";
             
             string logType = DropDownList2.SelectedValue;
 
-            
-            string result = MakeWebServiceCall($"http://{server}:8081/api/EventLog?logName={logType}&maxEvents=50");
-            EventProps[] allValues = ParseResults(result);
-            AddResultToTable(server, allValues);
-            
-
+            try
+            {
+                string result = await HttpClientProvider.Instance.GetStringAsync($"http://{server}:8081/api/EventLog?logName={logType}&maxEvents=50");
+                EventProps[] allValues = ParseResults(result);
+                AddResultToTable(server, allValues);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError($"Error fetching event logs from {server}: {ex}");
+            }
         }
 
         private List<string> GetServerListFromDatabase(string env)
         {
             List<string> serverList = new List<string>();
 
-            string connectionString = "Data Source=wdmlesql01,31082;Initial Catalog=EMPOWER_DEV; User ID=EMPOWERDEV;Password=2=N%+Dn?8bWTHV~7q56jPkBJ";
+            string connectionString = ConfigurationManager.ConnectionStrings["EmpowerDb"]?.ConnectionString;
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                string query = $"SELECT Server FROM EmpowerStatus WHERE env='{env}'";
+                string query = "SELECT Server FROM EmpowerStatus WHERE env=@env";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
+                    cmd.Parameters.AddWithValue("@env", env);
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
@@ -57,13 +66,6 @@ namespace EmpowerStatusSite
             return serverList;
         }
 
-        private string MakeWebServiceCall(string url)
-        {
-            using (WebClient client = new WebClient())
-            {
-                return client.DownloadString(url);
-            }
-        }
         private EventProps[] ParseResults(string result)
         {
             EventProps[] parsedValues = new EventProps[] {};
@@ -147,9 +149,7 @@ namespace EmpowerStatusSite
 
         protected void submit_Click(object sender, EventArgs e)
         {
-            BindServerData(Serverddl.SelectedValue,DropDownList2.SelectedValue,DropDownList1.SelectedValue);
+            var _ = BindServerDataAsync(Serverddl.SelectedValue, DropDownList2.SelectedValue, DropDownList1.SelectedValue);
         }
-
-        
     }
 }

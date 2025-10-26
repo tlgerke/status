@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
 using System.Web.UI.WebControls;
+using EmpowerStatusSite.Helpers;
 
 namespace EmpowerStatusSite
 {
@@ -19,25 +20,30 @@ namespace EmpowerStatusSite
         {
             serviceAdminItem.Visible = false;
             taskAdminItem.Visible = false;
-            
+
             string name = "";
-            using (var context = new PrincipalContext(ContextType.Domain))
+            try
             {
-                var usr = UserPrincipal.FindByIdentity(context, HttpContext.Current.User.Identity.Name);
-                if (usr != null)
+                using (var context = new PrincipalContext(ContextType.Domain))
                 {
-                    name = usr.DisplayName;
+                    var usr = UserPrincipal.FindByIdentity(context, HttpContext.Current.User.Identity.Name);
+                    if (usr != null)
+                    {
+                        name = usr.DisplayName;
+                    }
+
+                    UserID.Text = $"Hi, {name}";
+
+                    if (AuthorizationHelper.IsUserAdmin(HttpContext.Current.User.Identity.Name))
+                    {
+                        serviceAdminItem.Visible = true;
+                        taskAdminItem.Visible = true;
+                    }
                 }
-
-                UserID.Text = $"Hi, {name}";
-
-                if (usr.DisplayName.ToLower() == "tracy gerke" || usr.DisplayName.ToLower() == "john currie" || usr.DisplayName.ToLower() =="amy glenn" || usr.DisplayName.ToLower() == "rik danner" || usr.DisplayName.ToLower() == "casey blackman" || usr.DisplayName.ToLower() == "kevin small" || usr.DisplayName.ToLower() == "trevor massey" || usr.DisplayName.ToLower() == "eric stabile" || usr.DisplayName.ToLower() == "kira pedroza")
-                //if (HttpContext.Current.User.Identity.Name.ToLower() == "corp\\y5cn2" || HttpContext.Current.User.Identity.Name.ToLower() == "corp\\c1wc4" || HttpContext.Current.User.Identity.Name.ToLower() == "corp\\x5px9" || HttpContext.Current.User.Identity.Name.ToLower() == "corp\\y5bw3" || HttpContext.Current.User.Identity.Name.ToLower() == "corp\\y5cn2" || HttpContext.Current.User.Identity.Name.ToLower() == "corp\\y9yw8")
-                {
-                    serviceAdminItem.Visible = true;
-                    taskAdminItem.Visible = true;
-
-                }
+            }
+            catch (Exception ex)
+            {
+                Helpers.Logging.LogWarning("Error in master page Page_Load: " + ex);
             }
         }
     }

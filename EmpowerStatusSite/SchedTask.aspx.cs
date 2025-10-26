@@ -9,27 +9,38 @@ using System.Web;
 using System.Web.Script.Serialization;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using System.Configuration;
+using EmpowerStatusSite.Helpers;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace EmpowerStatusSite
 {
     public partial class SchedTask : System.Web.UI.Page
     {
         //public SortedList<string, string> allValues = new SortedList<string, string>();
-        public TasksProp[] allVaues = new TasksProp[] {};
+        public List<TasksProp> allValues = new List<TasksProp>();
         protected void Page_Load(object sender, EventArgs e)
         {
-            BindServerData(DropDownList1.SelectedValue);
+            var _ = BindServerDataAsync(DropDownList1.SelectedValue);
         }
 
-        private void BindServerData(string env)
+        private async Task BindServerDataAsync(string env)
         {
             EnvName.Text = $"{env} Scheduled Tasks";
             List<string> serverList = GetServerListFromDatabase(env);
 
             foreach (string server in serverList)
             {
-                string result = MakeWebServiceCall($"http://{server}:8081/api/scheduledtasks/status");
-                ParseResults(result);
+                try
+                {
+                    string result = await HttpClientProvider.Instance.GetStringAsync($"http://{server}:8081/api/scheduledtasks/status");
+                    ParseResults(result, server);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"Failed to fetch scheduled tasks from {server}: {ex.Message}");
+                }
             }
             AddResultToTable();
         }
@@ -38,15 +49,18 @@ namespace EmpowerStatusSite
         {
             List<string> serverList = new List<string>();
 
-            string connectionString = "Data Source=wdmlesql01,31082;Initial Catalog=EMPOWER_DEV; User ID=EMPOWERDEV;Password=2=N%+Dn?8bWTHV~7q56jPkBJ";
+            string connectionString = ConfigurationManager.ConnectionStrings["EmpowerDb"]?.ConnectionString;
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                string query = $"SELECT Server FROM EmpowerStatus WHERE Type='scheduler' AND env='{env}'";
+                string query = "SELECT Server FROM EmpowerStatus WHERE Type=@type AND env=@env";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
+                    cmd.Parameters.AddWithValue("@type", "scheduler");
+                    cmd.Parameters.AddWithValue("@env", env);
+
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
@@ -61,57 +75,55 @@ namespace EmpowerStatusSite
 
         private string MakeWebServiceCall(string url)
         {
+            // kept for compatibility but prefer async methods
             using (WebClient client = new WebClient())
             {
                 return client.DownloadString(url);
             }
         }
 
-        private void ParseResults(string result)
+        private void ParseResults(string result, string server)
         {
             JavaScriptSerializer s = new JavaScriptSerializer();
             TasksProp [] taskprops = s.Deserialize<TasksProp[]>(result);
-            
-            allVaues = allVaues.Concat(taskprops).ToArray();
-               
 
-            
+            foreach (var tp in taskprops)
+            {
+                tp.Server = server;
+                allValues.Add(tp);
+            }
         }
 
         private void AddResultToTable()
         {
-            for (int i = 0; i < allVaues.Length; i++)
+            for (int i =0; i < allValues.Count; i++)
             {
-                if (!allVaues[i].Name.Contains("npcap") && !allVaues[i].Name.Contains("SensorFramework") && !allVaues[i].Name.Contains("User_Feed") && !allVaues[i].Name.StartsWith("IIS") && !allVaues[i].Name.Contains("AutoRepair") && !allVaues[i].Name.Equals("Register DNS") && !allVaues[i].Name.Equals("Move SNOW Certificate"))
+                if (!allValues[i].Name.Contains("npcap") && !allValues[i].Name.Contains("SensorFramework") && !allValues[i].Name.Contains("User_Feed") && !allValues[i].Name.StartsWith("IIS") && !allValues[i].Name.Contains("AutoRepair") && !allValues[i].Name.Equals("Register DNS") && !allValues[i].Name.Equals("Move SNOW Certificate"))
                 {
                     TableRow row = new TableRow();
                     TableCell nameCell = new TableCell();
-                    nameCell.Text = allVaues[i].Name;
+                    nameCell.Text = allValues[i].Name;
                     nameCell.BorderStyle = BorderStyle.Solid;
                     row.Cells.Add(nameCell);
 
                     TableCell stateCell = new TableCell();
-                    stateCell.Text = allVaues[i].State.ToString();
+                    stateCell.Text = allValues[i].State.ToString();
                     stateCell.BorderStyle = BorderStyle.Solid;
-                    if (allVaues[i].State.ToString() == "Ready" || allVaues[i].State.ToString() == "Running")
+                    if (allValues[i].State.ToString() == "Ready" || allValues[i].State.ToString() == "Running")
                     {
                         stateCell.BackColor = System.Drawing.Color.Green;
                     }
                     row.Cells.Add(stateCell);
-                    //TableCell enabledCell = new TableCell();
-                    //enabledCell.Text = allVaues[i].Enabled.ToString();
-                    //enabledCell.BorderStyle = BorderStyle.Solid;
-                    //row.Cells.Add(enabledCell);
                     TableCell nextCell = new TableCell();
-                    nextCell.Text = allVaues[i].NextRunTime.ToString();
+                    nextCell.Text = allValues[i].NextRunTime.ToString();
                     nextCell.BorderStyle = BorderStyle.Solid;
                     row.Cells.Add(nextCell);
                     TableCell lastCell = new TableCell();
-                    lastCell.Text = allVaues[i].LastRunTime.ToString();
+                    lastCell.Text = allValues[i].LastRunTime.ToString();
                     lastCell.BorderStyle = BorderStyle.Solid;
                     row.Cells.Add(lastCell);
                     TableCell scheduleCell = new TableCell();
-                    scheduleCell.Text = allVaues[i].Schedule.ToString();
+                    scheduleCell.Text = allValues[i].Schedule.ToString();
                     scheduleCell.BorderStyle = BorderStyle.Solid;
                     scheduleCell.CssClass = "wordwrap";
                     row.Cells.Add(scheduleCell);

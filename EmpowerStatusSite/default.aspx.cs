@@ -9,6 +9,7 @@ using System.Net;
 using System.Web.Services;
 using Newtonsoft.Json;
 using System.Web.Http.Results;
+using System.Configuration;
 
 namespace EmpowerStatusSite
 {
@@ -29,7 +30,7 @@ namespace EmpowerStatusSite
         {
             string[,] serverList = new string[,] {};
 
-            string connectionString = "Data Source=wdmlesql01,31082;Initial Catalog=EMPOWER_DEV;User ID=EMPOWERDEV;Password=2=N%+Dn?8bWTHV~7q56jPkBJ";
+            string connectionString = ConfigurationManager.ConnectionStrings["EmpowerDb"]?.ConnectionString;
 
             using (SqlConnection con = new SqlConnection(connectionString))
             {

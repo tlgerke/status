@@ -27,4 +27,28 @@
         <asp:TableHeaderCell Width="300">Schedule</asp:TableHeaderCell>
     </asp:TableHeaderRow>
 </asp:Table>
+
+<script>
+document.addEventListener('click', function(e) {
+ var t = e.target;
+ if (t.classList && t.classList.contains('ajax-action')) {
+ e.preventDefault();
+ var srv = t.getAttribute('data-server');
+ var name = t.getAttribute('data-service');
+ if (t.classList.contains('start-task')) {
+ fetch('/api/proxy/scheduledtask/run', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ server: srv, taskName: name }) })
+ .then(r => { if (r.ok) { t.innerText = 'Started'; t.disabled = true; } else alert('Failed'); });
+ }
+ if (t.classList.contains('disable-task')) {
+ fetch('/api/proxy/scheduledtask/disable', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ server: srv, taskName: name }) })
+ .then(r => { if (r.ok) { t.innerText = 'Disabled'; t.disabled = true; } else alert('Failed'); });
+ }
+ if (t.classList.contains('enable-task')) {
+ fetch('/api/proxy/scheduledtask/enable', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ server: srv, taskName: name }) })
+ .then(r => { if (r.ok) { t.innerText = 'Enabled'; t.disabled = true; } else alert('Failed'); });
+ }
+ }
+});
+</script>
+
 </asp:Content>
